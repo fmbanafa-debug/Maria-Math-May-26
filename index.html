@@ -1,0 +1,173 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade 4 Math Interactive Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Quicksand', sans-serif; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); min-height: 100vh; }
+        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); }
+        .teacher-bubble { position: relative; background: #ffffff; border-radius: 20px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .teacher-bubble::after { content: ''; position: absolute; left: -10px; top: 20px; border-width: 10px 10px 10px 0; border-style: solid; border-color: transparent #ffffff transparent transparent; }
+        .pulse { animation: pulse-animation 2s infinite; }
+        @keyframes pulse-animation { 0% { transform: scale(1); } 70% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-blue-800">Imperial Math Academy</h1>
+                <p class="text-blue-600">G4 Semester 2 Revision</p>
+            </div>
+            <div id="status-indicator" class="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                <span class="w-2 h-2 bg-green-500 rounded-full"></span> Ready
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="space-y-4">
+                <div class="glass-card rounded-2xl p-6">
+                    <h2 class="font-bold text-gray-700 mb-4">Lessons</h2>
+                    <nav class="space-y-2" id="topic-nav"></nav>
+                </div>
+                <div class="glass-card rounded-2xl p-6 text-center">
+                    <button id="voice-toggle" onclick="toggleMute()" class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto hover:bg-blue-200 transition">
+                        <span id="speaker-icon">🔊</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="md:col-span-2 space-y-6">
+                <div class="flex items-start gap-4">
+                    <div class="w-16 h-16 rounded-full bg-blue-600 flex-shrink-0 flex items-center justify-center text-white text-2xl">👨‍🏫</div>
+                    <div class="flex-grow">
+                        <div id="teacher-bubble" class="teacher-bubble text-gray-800">
+                            Hello! I'm your Math Assistant. Pick a topic to start!
+                        </div>
+                    </div>
+                </div>
+
+                <div id="workspace" class="glass-card rounded-3xl p-8 min-h-[300px] flex flex-col items-center justify-center">
+                    <div id="content-area" class="w-full">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Welcome!</h3>
+                        <p>Select a lesson from the left to begin our review.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="user-input" placeholder="Ask a question..." class="flex-grow glass-card rounded-2xl px-6 py-4 focus:outline-none">
+                    <button onclick="handleAsk()" class="bg-blue-600 text-white rounded-2xl px-8 py-4 font-bold shadow-lg">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <audio id="audio-player"></audio>
+
+    <script>
+        let isMuted = false;
+        let isProcessing = false;
+
+        const curriculum = {
+            'GCF': { title: "GCF", explanation: "The Greatest Common Factor is the largest number that divides into both numbers evenly." },
+            'Fractions': { title: "Simplest Form", explanation: "Simplest form is when the numerator and denominator share no common factors besides 1." },
+            'LCM': { title: "LCM", explanation: "The Least Common Multiple is the smallest multiple shared by two or more numbers." },
+            'Geometry': { title: "Quadrilaterals", explanation: "Quadrilaterals are 4-sided shapes like squares, rectangles, and trapezoids." }
+        };
+
+        function initNav() {
+            const nav = document.getElementById('topic-nav');
+            Object.keys(curriculum).forEach(key => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3 rounded-xl hover:bg-blue-50 transition text-blue-700 font-medium";
+                btn.innerText = curriculum[key].title;
+                btn.onclick = () => selectTopic(key);
+                nav.appendChild(btn);
+            });
+        }
+
+        async function selectTopic(key) {
+            if (isProcessing) return;
+            const topic = curriculum[key];
+            document.getElementById('content-area').innerHTML = `<h3 class="text-2xl font-bold text-blue-800 mb-4">${topic.title}</h3><p class="text-lg text-gray-700">${topic.explanation}</p>`;
+            updateUI(topic.explanation);
+        }
+
+        async function handleAsk() {
+            const input = document.getElementById('user-input');
+            const query = input.value.trim();
+            if (!query || isProcessing) return;
+
+            input.value = '';
+            setLoading(true);
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        query, 
+                        systemPrompt: "You are a Grade 4 math teacher. Explain GCF, LCM, and Geometry simply." 
+                    })
+                });
+                const data = await response.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm not sure, let's try again.";
+                updateUI(text);
+            } catch (e) {
+                updateUI("Error connecting to my brain! Check Vercel logs.");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function updateUI(text) {
+            document.getElementById('teacher-bubble').innerText = text;
+            if (!isMuted) {
+                const res = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+                const pcm = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+                if (pcm) playWav(pcm);
+            }
+        }
+
+        function playWav(base64) {
+            const blob = pcmToWav(base64, 24000);
+            const player = document.getElementById('audio-player');
+            player.src = URL.createObjectURL(blob);
+            player.play();
+        }
+
+        function pcmToWav(b64, rate) {
+            const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+            const samples = new Int16Array(bytes.buffer);
+            const buffer = new ArrayBuffer(44 + samples.length * 2);
+            const view = new DataView(buffer);
+            view.setUint32(0, 0x52494646, false); view.setUint32(4, 36 + samples.length * 2, true);
+            view.setUint32(8, 0x57415645, false); view.setUint32(12, 0x666d7420, false);
+            view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+            view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true);
+            view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+            view.setUint32(36, 0x64617461, false); view.setUint32(40, samples.length * 2, true);
+            for (let i = 0; i < samples.length; i++) view.setInt16(44 + i * 2, samples[i], true);
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        function setLoading(l) { 
+            isProcessing = l; 
+            document.getElementById('status-indicator').innerText = l ? "Thinking..." : "Ready";
+        }
+        function toggleMute() { isMuted = !isMuted; document.getElementById('speaker-icon').innerText = isMuted ? "🔇" : "🔊"; }
+        
+        initNav();
+    </script>
+</body>
+</html>
+
+```
