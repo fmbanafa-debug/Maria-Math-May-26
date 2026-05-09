@@ -1,13 +1,8 @@
-```json
 {
-  "name": "math-tutor-vercel",
+  "name": "math-tutor",
   "version": "1.0.0",
-  "description": "Secure Grade 4 Math Tutor with Vercel Serverless Functions",
-  "main": "index.html",
-  "scripts": {
-    "start": "vercel dev"
-  },
-  "dependencies": {}
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  }
 }
-
-```
