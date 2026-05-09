@@ -1,7 +1,6 @@
-```javascript
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+  
   const apiKey = process.env.GEMINI_API_KEY;
   const { text } = req.body;
 
@@ -10,7 +9,7 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Say clearly: ${text.replace(/[*_$]/g, '')}` }] }],
+        contents: [{ parts: [{ text: `Say in a helpful, kind teacher voice: ${text.replace(/[*_#]/g, '')}` }] }],
         generationConfig: {
           responseModalities: ["AUDIO"],
           speechConfig: {
@@ -23,10 +22,8 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    return res.status(200).json(data);
+    res.status(200).json(data);
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to fetch TTS API' });
+    res.status(500).json({ error: 'Voice error' });
   }
 }
-
-```
