@@ -9,7 +9,7 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Say in a helpful, kind teacher voice: ${text.replace(/[*_#]/g, '')}` }] }],
+        contents: [{ parts: [{ text: `Explain clearly: ${text}` }] }],
         generationConfig: {
           responseModalities: ["AUDIO"],
           speechConfig: {
@@ -22,8 +22,9 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    res.status(200).json(data);
+    const audio = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    return res.status(200).json({ audio });
   } catch (error) {
-    res.status(500).json({ error: 'Voice error' });
+    return res.status(500).json({ error: 'TTS Failed' });
   }
 }
